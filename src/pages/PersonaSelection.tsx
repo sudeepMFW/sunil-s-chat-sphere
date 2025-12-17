@@ -31,7 +31,7 @@ const personas = [
     subtitle: "Wisdom & Guidance",
     icon: "life_coach" as const,
     expertise: "life_coach" as Expertise,
-    image: "https://m.media-amazon.com/images/M/MV5BODUwMzUyNTUxMl5BMl5BanBnXkFtZTcwNDM2ODIyOA@@._V1_FMjpg_UX1000_.jpg",
+    image: "https://c.ndtvimg.com/gws/ms/sunil-shetty-actor-producer-and-more/assets/2.jpeg?1723380029",
   },
 ];
 

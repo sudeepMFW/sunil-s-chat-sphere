@@ -31,7 +31,7 @@ const expertiseOptions: { value: Expertise; label: string }[] = [
 
 const humorOptions: { value: Humor; label: string }[] = [
   { value: "calm", label: "Calm" },
-  { value: "happy", label: "Happy" },
+  { value: "angry", label: "Angry" },
   { value: "strict", label: "Strict" },
   { value: "funny", label: "Funny" },
 ];

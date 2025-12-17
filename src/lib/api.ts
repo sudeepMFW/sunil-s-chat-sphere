@@ -2,7 +2,7 @@ const BASE_URL = "http://40.90.232.96:8082";
 const PERSONA_ID = "sunil_shetty";
 
 export type Expertise = "actor" | "businessman" | "fitness" | "life_coach";
-export type Humor = "calm" | "happy" | "strict" | "funny";
+export type Humor = "calm" | "angry" | "strict" | "funny";
 
 export const setExpertise = async (expertise: Expertise[]): Promise<void> => {
   const response = await fetch(`${BASE_URL}/persona/${PERSONA_ID}/set-expertise`, {
