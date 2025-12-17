@@ -11,7 +11,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ChatMessage } from "@/components/ChatMessage";
+import { LoadingDots } from "@/components/LoadingDots";
 import { setExpertise, setHumor, sendVoiceMessage, Expertise, Humor } from "@/lib/api";
+import { personaImages } from "@/lib/personaImages";
 import { useToast } from "@/hooks/use-toast";
 
 interface Message {
@@ -156,11 +158,19 @@ const ChatInterface = () => {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           
-          <div className="flex-1">
+          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/50 flex-shrink-0">
+            <img 
+              src={personaImages[currentExpertise]} 
+              alt="Sunil Shetty"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          
+          <div className="flex-1 min-w-0">
             <h1 className="text-lg font-semibold text-foreground">Sunil Shetty</h1>
             {isSpeaking && (
               <div className="flex items-center gap-1.5 text-primary text-xs">
-                <Volume2 className="w-3 h-3 animate-pulse-glow" />
+                <Volume2 className="w-3 h-3 animate-pulse" />
                 <span>Speaking...</span>
               </div>
             )}
@@ -213,16 +223,21 @@ const ChatInterface = () => {
               content={message.content}
               isUser={message.isUser}
               isPlaying={!message.isUser && isSpeaking && index === messages.length - 1}
+              avatarImage={personaImages[currentExpertise]}
             />
           ))}
           
           {isLoading && (
-            <div className="flex gap-3">
-              <div className="w-9 h-9 rounded-full gold-gradient flex items-center justify-center">
-                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+            <div className="flex gap-3 items-start">
+              <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-primary/50 flex-shrink-0">
+                <img 
+                  src={personaImages[currentExpertise]} 
+                  alt="Sunil Shetty"
+                  className="w-full h-full object-cover"
+                />
               </div>
-              <div className="bg-card border border-border rounded-lg px-4 py-3">
-                <p className="text-sm text-muted-foreground">Thinking...</p>
+              <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3">
+                <LoadingDots />
               </div>
             </div>
           )}

@@ -5,6 +5,7 @@ interface PersonaCardProps {
   title: string;
   subtitle: string;
   icon: "actor" | "businessman" | "fitness" | "life_coach";
+  image: string;
   onChat: () => void;
   isLoading?: boolean;
 }
@@ -16,20 +17,28 @@ const iconMap = {
   life_coach: Heart,
 };
 
-export const PersonaCard = ({ title, subtitle, icon, onChat, isLoading }: PersonaCardProps) => {
+export const PersonaCard = ({ title, subtitle, icon, image, onChat, isLoading }: PersonaCardProps) => {
   const Icon = iconMap[icon];
 
   return (
-    <div className="group relative bg-card border border-border rounded-lg p-6 card-hover">
-      <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      
-      <div className="relative z-10">
-        <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors duration-300">
-          <Icon className="w-6 h-6 text-primary" />
+    <div className="group relative bg-card border border-border rounded-xl overflow-hidden card-hover">
+      {/* Image Section */}
+      <div className="relative h-48 overflow-hidden">
+        <img 
+          src={image} 
+          alt={title}
+          className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-110"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
+        <div className="absolute bottom-3 left-3 w-10 h-10 rounded-full bg-secondary/80 backdrop-blur-sm flex items-center justify-center border border-border">
+          <Icon className="w-5 h-5 text-primary" />
         </div>
-        
-        <h3 className="text-xl font-semibold text-foreground mb-2">{title}</h3>
-        <p className="text-muted-foreground text-sm mb-6">{subtitle}</p>
+      </div>
+      
+      {/* Content Section */}
+      <div className="p-5">
+        <h3 className="text-lg font-semibold text-foreground mb-1">{title}</h3>
+        <p className="text-muted-foreground text-sm mb-5">{subtitle}</p>
         
         <Button 
           onClick={onChat} 
