@@ -47,8 +47,8 @@ const ChatInterface = () => {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [currentExpertise, setCurrentExpertise] = useState<Expertise>(initialExpertise);
-  const [currentHumor, setCurrentHumor] = useState<Humor>("calm");
+  const [currentExpertise, setCurrentExpertise] = useState<Expertise | undefined>(initialExpertise);
+  const [currentHumor, setCurrentHumor] = useState<Humor | undefined>(undefined);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -178,12 +178,16 @@ const ChatInterface = () => {
 
           <div className="flex gap-2">
             <Select value={currentExpertise} onValueChange={handleExpertiseChange}>
-              <SelectTrigger className="w-[130px] bg-secondary border-border">
-                <SelectValue />
+              <SelectTrigger className="w-[150px] bg-gradient-to-r from-secondary to-secondary/80 border-primary/30 hover:border-primary/50 transition-all duration-300 shadow-sm hover:shadow-md hover:shadow-primary/10">
+                <SelectValue placeholder="Select Expertise" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-card border-primary/30 shadow-xl shadow-primary/10">
                 {expertiseOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
+                  <SelectItem 
+                    key={opt.value} 
+                    value={opt.value}
+                    className="hover:bg-primary/10 focus:bg-primary/10 cursor-pointer transition-colors"
+                  >
                     {opt.label}
                   </SelectItem>
                 ))}
@@ -191,12 +195,16 @@ const ChatInterface = () => {
             </Select>
 
             <Select value={currentHumor} onValueChange={handleHumorChange}>
-              <SelectTrigger className="w-[100px] bg-secondary border-border">
-                <SelectValue />
+              <SelectTrigger className="w-[130px] bg-gradient-to-r from-secondary to-secondary/80 border-primary/30 hover:border-primary/50 transition-all duration-300 shadow-sm hover:shadow-md hover:shadow-primary/10">
+                <SelectValue placeholder="Select Humor" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-card border-primary/30 shadow-xl shadow-primary/10">
                 {humorOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
+                  <SelectItem 
+                    key={opt.value} 
+                    value={opt.value}
+                    className="hover:bg-primary/10 focus:bg-primary/10 cursor-pointer transition-colors"
+                  >
                     {opt.label}
                   </SelectItem>
                 ))}
