@@ -23,11 +23,11 @@ export const PersonaCard = ({ title, subtitle, icon, image, onChat, isLoading }:
   return (
     <div className="group relative bg-card border border-border rounded-xl overflow-hidden card-hover">
       {/* Image Section */}
-      <div className="relative h-48 overflow-hidden">
+      <div className="relative h-64 overflow-hidden">
         <img 
           src={image} 
           alt={title}
-          className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-110"
+          className="w-full h-full object-cover object-[center_20%] transition-transform duration-500 group-hover:scale-110"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
         <div className="absolute bottom-3 left-3 w-10 h-10 rounded-full bg-secondary/80 backdrop-blur-sm flex items-center justify-center border border-border">
