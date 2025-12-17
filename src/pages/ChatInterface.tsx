@@ -152,11 +152,17 @@ const ChatInterface = () => {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/personas")}
             className="text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
+          
+          <img 
+            src="https://mediafirewall.ai/images/logo.png" 
+            alt="Media Firewall Logo" 
+            className="h-8 object-contain"
+          />
           
           <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/50 flex-shrink-0">
             <img 
