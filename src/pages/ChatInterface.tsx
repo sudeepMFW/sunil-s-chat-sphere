@@ -1,0 +1,258 @@
+import { useState, useRef, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft, Send, Volume2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ChatMessage } from "@/components/ChatMessage";
+import { setExpertise, setHumor, sendVoiceMessage, Expertise, Humor } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+
+interface Message {
+  id: string;
+  content: string;
+  isUser: boolean;
+}
+
+const expertiseOptions: { value: Expertise; label: string }[] = [
+  { value: "actor", label: "Actor" },
+  { value: "businessman", label: "Businessman" },
+  { value: "fitness", label: "Fitness Mentor" },
+  { value: "life_coach", label: "Life Coach" },
+];
+
+const humorOptions: { value: Humor; label: string }[] = [
+  { value: "calm", label: "Calm" },
+  { value: "happy", label: "Happy" },
+  { value: "strict", label: "Strict" },
+  { value: "funny", label: "Funny" },
+];
+
+const ChatInterface = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  const initialExpertise = (location.state?.expertise as Expertise) || "actor";
+  
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [currentExpertise, setCurrentExpertise] = useState<Expertise>(initialExpertise);
+  const [currentHumor, setCurrentHumor] = useState<Humor>("calm");
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleExpertiseChange = async (value: Expertise) => {
+    try {
+      await setExpertise([value]);
+      setCurrentExpertise(value);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update expertise",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleHumorChange = async (value: Humor) => {
+    try {
+      await setHumor(value);
+      setCurrentHumor(value);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update humor",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content: inputValue.trim(),
+      isUser: true,
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInputValue("");
+    setIsLoading(true);
+
+    try {
+      const audioBlob = await sendVoiceMessage(userMessage.content);
+      
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "🎙️ Voice response",
+        isUser: false,
+      };
+      setMessages((prev) => [...prev, aiMessage]);
+
+      // Play audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      
+      audio.onplay = () => setIsSpeaking(true);
+      audio.onended = () => {
+        setIsSpeaking(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+      audio.onerror = () => {
+        setIsSpeaking(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+      
+      await audio.play();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to get response. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
+      <header className="border-b border-border px-4 py-3">
+        <div className="max-w-3xl mx-auto flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/")}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          
+          <div className="flex-1">
+            <h1 className="text-lg font-semibold text-foreground">Sunil Shetty</h1>
+            {isSpeaking && (
+              <div className="flex items-center gap-1.5 text-primary text-xs">
+                <Volume2 className="w-3 h-3 animate-pulse-glow" />
+                <span>Speaking...</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <Select value={currentExpertise} onValueChange={handleExpertiseChange}>
+              <SelectTrigger className="w-[130px] bg-secondary border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {expertiseOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={currentHumor} onValueChange={handleHumorChange}>
+              <SelectTrigger className="w-[100px] bg-secondary border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {humorOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </header>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-6">
+        <div className="max-w-3xl mx-auto space-y-4">
+          {messages.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">
+                Start a conversation with Sunil Shetty
+              </p>
+            </div>
+          )}
+          
+          {messages.map((message, index) => (
+            <ChatMessage
+              key={message.id}
+              content={message.content}
+              isUser={message.isUser}
+              isPlaying={!message.isUser && isSpeaking && index === messages.length - 1}
+            />
+          ))}
+          
+          {isLoading && (
+            <div className="flex gap-3">
+              <div className="w-9 h-9 rounded-full gold-gradient flex items-center justify-center">
+                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+              </div>
+              <div className="bg-card border border-border rounded-lg px-4 py-3">
+                <p className="text-sm text-muted-foreground">Thinking...</p>
+              </div>
+            </div>
+          )}
+          
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+
+      {/* Input */}
+      <div className="border-t border-border px-4 py-4">
+        <div className="max-w-3xl mx-auto flex gap-3">
+          <Input
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type your message..."
+            disabled={isLoading}
+            className="flex-1 bg-secondary border-border focus-visible:ring-primary"
+          />
+          <Button
+            onClick={handleSendMessage}
+            disabled={!inputValue.trim() || isLoading}
+            className="gold-gradient text-primary-foreground hover:opacity-90"
+          >
+            <Send className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ChatInterface;
