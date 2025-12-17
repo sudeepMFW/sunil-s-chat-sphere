@@ -57,16 +57,17 @@ const PersonaSelection = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background px-4 py-12 md:py-20">
+    <div className="min-h-screen bg-background px-4 py-8 md:py-12">
       <div className="max-w-4xl mx-auto">
+        <div className="mb-8">
+          <img 
+            src="https://mediafirewall.ai/images/logo.png" 
+            alt="Media Firewall Logo" 
+            className="h-10 object-contain"
+          />
+        </div>
+        
         <div className="text-center mb-12">
-          <div className="flex justify-center mb-6">
-            <img 
-              src="https://mediafirewall.ai/images/logo.png" 
-              alt="Media Firewall Logo" 
-              className="h-12 object-contain"
-            />
-          </div>
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
             Chat with <span className="text-gold-gradient">Sunil Shetty</span>
           </h1>
