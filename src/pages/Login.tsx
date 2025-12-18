@@ -55,7 +55,7 @@ const Login = () => {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Welcome Back</h1>
-            <p className="text-muted-foreground text-sm mt-1">Sign in to chat with Sunil Shetty</p>
+            <p className="text-muted-foreground text-sm mt-1">Sign in to chat with Suniel Shetty</p>
           </div>
         </CardHeader>
         <CardContent className="pt-4">

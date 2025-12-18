@@ -20,7 +20,7 @@ export const ChatMessage = ({ content, isUser, isPlaying, avatarImage }: ChatMes
         }`}>
           <img 
             src={avatarImage} 
-            alt="Sunil Shetty"
+            alt="Suniel Shetty"
             className="w-full h-full object-cover"
           />
         </div>

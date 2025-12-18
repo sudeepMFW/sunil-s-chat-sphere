@@ -6,28 +6,28 @@ import { useToast } from "@/hooks/use-toast";
 
 const personas = [
   {
-    title: "Sunil Shetty – Actor",
+    title: "Suniel Shetty – Actor",
     subtitle: "Cinema & Discipline",
     icon: "actor" as const,
     expertise: "actor" as Expertise,
     image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgJhaSrgKwzbX-eVYBNh6KHja4QDUrT6UFtRy3eMtnGCDUNBVbxQPi8vfKX0ZEZckXX4driAkTRiog6COATyb_CJ8t6uCYVbjIG-m9CbbW-O1tVtxn4eDVXzbgIoWosJewPu2wLU699-YflK7TDN7Sv3lGMsuLDSfQO8rFScw58SOcatVYKj0tx3EEH1Otx/s768/sunil_shetty_003_1024x768_drhx.jpg",
   },
   {
-    title: "Sunil Shetty – Businessman",
+    title: "Suniel Shetty – Businessman",
     subtitle: "Business & Ethics",
     icon: "businessman" as const,
     expertise: "businessman" as Expertise,
     image: "https://images.yourstory.com/cs/2/11718bd02d6d11e9aa979329348d4c3e/Imagelwtj-1599135426037.jpg?mode=crop&crop=faces&ar=2%3A1&format=auto&w=1920&q=75",
   },
   {
-    title: "Sunil Shetty – Fitness Mentor",
+    title: "Suniel Shetty – Fitness Mentor",
     subtitle: "Health & Strength",
     icon: "fitness" as const,
     expertise: "fitness" as Expertise,
     image: "https://filmfare.wwmindia.com/content/2017/Jun/thum_1496462157.jpg",
   },
   {
-    title: "Sunil Shetty – Life Coach",
+    title: "Suniel Shetty – Life Coach",
     subtitle: "Wisdom & Guidance",
     icon: "life_coach" as const,
     expertise: "life_coach" as Expertise,
@@ -69,7 +69,7 @@ const PersonaSelection = () => {
         
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-            Chat with <span className="text-gold-gradient">Sunil Shetty</span>
+            Chat with <span className="text-gold-gradient">Suniel Shetty</span>
           </h1>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             Choose a persona to start your conversation

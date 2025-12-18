@@ -161,13 +161,13 @@ const ChatInterface = () => {
           <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/50 flex-shrink-0">
             <img 
               src={personaImages[currentExpertise]} 
-              alt="Sunil Shetty"
+              alt="Suniel Shetty"
               className="w-full h-full object-cover"
             />
           </div>
           
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-semibold text-foreground">Sunil Shetty</h1>
+            <h1 className="text-lg font-semibold text-foreground">Suniel Shetty</h1>
             {isSpeaking && (
               <div className="flex items-center gap-1.5 text-primary text-xs">
                 <Volume2 className="w-3 h-3 animate-pulse" />
@@ -220,7 +220,7 @@ const ChatInterface = () => {
           {messages.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">
-                Start a conversation with Sunil Shetty
+                Start a conversation with Suniel Shetty
               </p>
             </div>
           )}
@@ -240,7 +240,7 @@ const ChatInterface = () => {
               <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-primary/50 flex-shrink-0">
                 <img 
                   src={personaImages[currentExpertise]} 
-                  alt="Sunil Shetty"
+                  alt="Suniel Shetty"
                   className="w-full h-full object-cover"
                 />
               </div>
