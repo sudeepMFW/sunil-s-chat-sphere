@@ -1,18 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Volume2 } from "lucide-react";
+import { ArrowLeft, Send, Volume2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ChatMessage } from "@/components/ChatMessage";
 import { LoadingDots } from "@/components/LoadingDots";
-import { setExpertise, setHumor, sendVoiceMessage, Expertise, Humor } from "@/lib/api";
+import { sendVoiceMessage, Expertise } from "@/lib/api";
 import { personaImages } from "@/lib/personaImages";
 import { useToast } from "@/hooks/use-toast";
 
@@ -20,21 +13,9 @@ interface Message {
   id: string;
   content: string;
   isUser: boolean;
+  isReference?: boolean;
+  referenceUrl?: string;
 }
-
-const expertiseOptions: { value: Expertise; label: string }[] = [
-  { value: "actor", label: "Actor" },
-  { value: "businessman", label: "Businessman" },
-  { value: "fitness", label: "Fitness Mentor" },
-  { value: "life_coach", label: "Life Coach" },
-];
-
-const humorOptions: { value: Humor; label: string }[] = [
-  { value: "calm", label: "Calm" },
-  { value: "angry", label: "Angry" },
-  { value: "strict", label: "Strict" },
-  { value: "funny", label: "Funny" },
-];
 
 const ChatInterface = () => {
   const location = useLocation();
@@ -47,8 +28,7 @@ const ChatInterface = () => {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [currentExpertise, setCurrentExpertise] = useState<Expertise | undefined>(initialExpertise);
-  const [currentHumor, setCurrentHumor] = useState<Humor | undefined>(undefined);
+  const [currentExpertise] = useState<Expertise>(initialExpertise);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -56,32 +36,6 @@ const ChatInterface = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  const handleExpertiseChange = async (value: Expertise) => {
-    try {
-      await setExpertise([value]);
-      setCurrentExpertise(value);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update expertise",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleHumorChange = async (value: Humor) => {
-    try {
-      await setHumor(value);
-      setCurrentHumor(value);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update humor",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
@@ -97,7 +51,7 @@ const ChatInterface = () => {
     setIsLoading(true);
 
     try {
-      const audioBlob = await sendVoiceMessage(userMessage.content);
+      const { audioBlob, references } = await sendVoiceMessage(userMessage.content);
       
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -105,6 +59,18 @@ const ChatInterface = () => {
         isUser: false,
       };
       setMessages((prev) => [...prev, aiMessage]);
+
+      // Add reference messages if any
+      if (references.length > 0) {
+        const referenceMessages: Message[] = references.map((ref, index) => ({
+          id: (Date.now() + 2 + index).toString(),
+          content: ref,
+          isUser: false,
+          isReference: true,
+          referenceUrl: ref,
+        }));
+        setMessages((prev) => [...prev, ...referenceMessages]);
+      }
 
       // Play audio
       if (audioRef.current) {
@@ -175,42 +141,6 @@ const ChatInterface = () => {
               </div>
             )}
           </div>
-
-          <div className="flex gap-2">
-            <Select value={currentExpertise} onValueChange={handleExpertiseChange}>
-              <SelectTrigger className="w-[150px] bg-gradient-to-r from-secondary to-secondary/80 border-primary/30 hover:border-primary/50 transition-all duration-300 shadow-sm hover:shadow-md hover:shadow-primary/10">
-                <SelectValue placeholder="Select Expertise" />
-              </SelectTrigger>
-              <SelectContent className="bg-card border-primary/30 shadow-xl shadow-primary/10">
-                {expertiseOptions.map((opt) => (
-                  <SelectItem 
-                    key={opt.value} 
-                    value={opt.value}
-                    className="hover:bg-primary/10 focus:bg-primary/10 cursor-pointer transition-colors"
-                  >
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={currentHumor} onValueChange={handleHumorChange}>
-              <SelectTrigger className="w-[130px] bg-gradient-to-r from-secondary to-secondary/80 border-primary/30 hover:border-primary/50 transition-all duration-300 shadow-sm hover:shadow-md hover:shadow-primary/10">
-                <SelectValue placeholder="Select Humor" />
-              </SelectTrigger>
-              <SelectContent className="bg-card border-primary/30 shadow-xl shadow-primary/10">
-                {humorOptions.map((opt) => (
-                  <SelectItem 
-                    key={opt.value} 
-                    value={opt.value}
-                    className="hover:bg-primary/10 focus:bg-primary/10 cursor-pointer transition-colors"
-                  >
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         </div>
       </header>
 
@@ -226,13 +156,36 @@ const ChatInterface = () => {
           )}
           
           {messages.map((message, index) => (
-            <ChatMessage
-              key={message.id}
-              content={message.content}
-              isUser={message.isUser}
-              isPlaying={!message.isUser && isSpeaking && index === messages.length - 1}
-              avatarImage={personaImages[currentExpertise]}
-            />
+            message.isReference ? (
+              <div key={message.id} className="flex gap-3 items-start">
+                <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-primary/50 flex-shrink-0">
+                  <img 
+                    src={personaImages[currentExpertise]} 
+                    alt="Suniel Shetty"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3">
+                  <a 
+                    href={message.referenceUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-primary hover:underline"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span className="break-all">{message.content}</span>
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <ChatMessage
+                key={message.id}
+                content={message.content}
+                isUser={message.isUser}
+                isPlaying={!message.isUser && isSpeaking && index === messages.length - 1}
+                avatarImage={personaImages[currentExpertise]}
+              />
+            )
           ))}
           
           {isLoading && (
