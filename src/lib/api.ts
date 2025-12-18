@@ -1,4 +1,4 @@
-const BASE_URL = "http://40.90.232.96:8082";
+const BASE_URL = "https://enterprise-mediafirewall-ai.millionvisions.ai/";
 const PERSONA_ID = "sunil_shetty";
 
 export type Expertise = "actor" | "businessman" | "fitness" | "life_coach";
@@ -75,6 +75,6 @@ export const sendVoiceMessage = async (text: string): Promise<VoiceResponse> => 
     : [];
 
   const audioBlob = await response.blob();
-
+  console.log(references)
   return { audioBlob, references };
 };
