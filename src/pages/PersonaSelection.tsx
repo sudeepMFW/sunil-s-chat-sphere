@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { LogOut } from "lucide-react";
 import { PersonaCard } from "@/components/PersonaCard";
+import { Button } from "@/components/ui/button";
 import { setExpertise, Expertise } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
@@ -40,6 +42,12 @@ const PersonaSelection = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const handleLogout = () => {
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("isAdmin");
+    navigate("/");
+  };
+
   const handleChat = async (expertise: Expertise) => {
     setLoadingExpertise(expertise);
     try {
@@ -59,12 +67,16 @@ const PersonaSelection = () => {
   return (
     <div className="min-h-screen bg-background px-4 py-8 md:py-12">
       <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
+        <div className="mb-8 flex items-center justify-between">
           <img 
             src="https://mediafirewall.ai/images/logo.png" 
             alt="Media Firewall Logo" 
             className="h-10 object-contain"
           />
+          <Button variant="outline" onClick={handleLogout} className="gap-2">
+            <LogOut className="w-4 h-4" />
+            Logout
+          </Button>
         </div>
         
         <div className="text-center mb-12">
