@@ -3,37 +3,54 @@ import { useNavigate } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { PersonaCard } from "@/components/PersonaCard";
 import { Button } from "@/components/ui/button";
-import { setExpertise, Expertise } from "@/lib/api";
+import { setExpertise, Expertise, PersonaType } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
-const personas = [
+interface Persona {
+  title: string;
+  subtitle: string;
+  icon: "actor" | "businessman" | "fitness" | "life_coach" | "kl_rahul";
+  personaType: PersonaType;
+  image: string;
+  isKlRahul?: boolean;
+}
+
+const personas: Persona[] = [
   {
     title: "Suniel Shetty – Actor",
     subtitle: "Cinema & Discipline",
     icon: "actor" as const,
-    expertise: "actor" as Expertise,
+    personaType: "actor" as Expertise,
     image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgJhaSrgKwzbX-eVYBNh6KHja4QDUrT6UFtRy3eMtnGCDUNBVbxQPi8vfKX0ZEZckXX4driAkTRiog6COATyb_CJ8t6uCYVbjIG-m9CbbW-O1tVtxn4eDVXzbgIoWosJewPu2wLU699-YflK7TDN7Sv3lGMsuLDSfQO8rFScw58SOcatVYKj0tx3EEH1Otx/s768/sunil_shetty_003_1024x768_drhx.jpg",
   },
   {
     title: "Suniel Shetty – Businessman",
     subtitle: "Business & Ethics",
     icon: "businessman" as const,
-    expertise: "businessman" as Expertise,
+    personaType: "businessman" as Expertise,
     image: "https://images.yourstory.com/cs/2/11718bd02d6d11e9aa979329348d4c3e/Imagelwtj-1599135426037.jpg?mode=crop&crop=faces&ar=2%3A1&format=auto&w=1920&q=75",
   },
   {
     title: "Suniel Shetty – Fitness Mentor",
     subtitle: "Health & Strength",
     icon: "fitness" as const,
-    expertise: "fitness" as Expertise,
+    personaType: "fitness" as Expertise,
     image: "https://filmfare.wwmindia.com/content/2017/Jun/thum_1496462157.jpg",
   },
   {
     title: "Suniel Shetty – Life Coach",
     subtitle: "Wisdom & Guidance",
     icon: "life_coach" as const,
-    expertise: "life_coach" as Expertise,
+    personaType: "life_coach" as Expertise,
     image: "https://c.ndtvimg.com/gws/ms/sunil-shetty-actor-producer-and-more/assets/2.jpeg?1723380029",
+  },
+  {
+    title: "KL Rahul – Cricket Fitness Coach",
+    subtitle: "Elite cricket fitness & batting guidance",
+    icon: "kl_rahul" as const,
+    personaType: "kl_rahul",
+    image: "https://img1.hscicdn.com/image/upload/f_auto,t_ds_w_1200,q_50/lsci/db/PICTURES/CMS/322000/322075.jpg",
+    isKlRahul: true,
   },
 ];
 
@@ -48,11 +65,21 @@ const PersonaSelection = () => {
     navigate("/");
   };
 
-  const handleChat = async (expertise: Expertise) => {
-    setLoadingExpertise(expertise);
+  const handleChat = async (persona: Persona) => {
+    setLoadingExpertise(persona.personaType);
     try {
-      await setExpertise([expertise]);
-      navigate("/chat", { state: { expertise } });
+      // Skip expertise API for KL Rahul
+      if (!persona.isKlRahul) {
+        await setExpertise([persona.personaType as Expertise]);
+      }
+      navigate("/chat", { 
+        state: { 
+          expertise: persona.personaType,
+          isKlRahul: persona.isKlRahul || false,
+          personaName: persona.title,
+          personaImage: persona.image,
+        } 
+      });
     } catch (error) {
       toast({
         title: "Connection Error",
@@ -88,16 +115,16 @@ const PersonaSelection = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {personas.map((persona) => (
             <PersonaCard
-              key={persona.expertise}
+              key={persona.personaType}
               title={persona.title}
               subtitle={persona.subtitle}
               icon={persona.icon}
               image={persona.image}
-              isLoading={loadingExpertise === persona.expertise}
-              onChat={() => handleChat(persona.expertise)}
+              isLoading={loadingExpertise === persona.personaType}
+              onChat={() => handleChat(persona)}
             />
           ))}
         </div>

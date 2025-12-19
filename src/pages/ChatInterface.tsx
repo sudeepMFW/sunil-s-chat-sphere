@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, LogOut, Play, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Send, LogOut, Play, ChevronDown, ChevronUp, Paperclip, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LoadingDots } from "@/components/LoadingDots";
-import { sendVoiceMessage, setLanguage, Expertise, Language } from "@/lib/api";
+import { sendVoiceMessage, sendVoiceMessageRahul, sendVideoMessageRahul, setLanguage, Expertise, Language, PersonaType } from "@/lib/api";
 import { personaImages } from "@/lib/personaImages";
 import { useToast } from "@/hooks/use-toast";
 
@@ -40,18 +40,23 @@ const ChatInterface = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const initialExpertise = (location.state?.expertise as Expertise) || "actor";
+  const initialExpertise = (location.state?.expertise as PersonaType) || "actor";
+  const isKlRahul = location.state?.isKlRahul || false;
+  const personaName = location.state?.personaName || "Suniel Shetty";
+  const personaImage = location.state?.personaImage || personaImages[initialExpertise as Expertise];
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
-  const [currentExpertise] = useState<Expertise>(initialExpertise);
+  const [currentExpertise] = useState<PersonaType>(initialExpertise);
   const [language, setLanguageState] = useState<Language>("English");
   const [expandedSummaries, setExpandedSummaries] = useState<Set<string>>(new Set());
+  const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -106,6 +111,29 @@ const ChatInterface = () => {
     audio.play();
   };
 
+  const autoPlayAudio = (audioBlob: Blob) => {
+    // Stop current audio if playing
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    const audioUrl = URL.createObjectURL(audioBlob);
+    const audio = new Audio(audioUrl);
+    audioRef.current = audio;
+
+    audio.onended = () => {
+      setPlayingMessageId(null);
+      URL.revokeObjectURL(audioUrl);
+    };
+    audio.onerror = () => {
+      setPlayingMessageId(null);
+      URL.revokeObjectURL(audioUrl);
+    };
+
+    audio.play();
+  };
+
   const toggleSummary = (messageId: string) => {
     setExpandedSummaries(prev => {
       const newSet = new Set(prev);
@@ -118,21 +146,68 @@ const ChatInterface = () => {
     });
   };
 
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate video file types
+      const validTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
+      if (!validTypes.includes(file.type)) {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload a valid video file (mp4, mov, avi, webm)",
+          variant: "destructive",
+        });
+        return;
+      }
+      setSelectedVideo(file);
+    }
+  };
+
+  const handleRemoveVideo = () => {
+    setSelectedVideo(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || isLoading) return;
+    if ((!inputValue.trim() && !selectedVideo) || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: inputValue.trim(),
+      content: selectedVideo 
+        ? `${inputValue.trim() || ''} [Video: ${selectedVideo.name}]`.trim()
+        : inputValue.trim(),
       isUser: true,
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const messageText = inputValue.trim();
+    const videoFile = selectedVideo;
     setInputValue("");
+    setSelectedVideo(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     setIsLoading(true);
 
     try {
-      const { audioBlob, references, summary } = await sendVoiceMessage(userMessage.content);
+      let response;
+      
+      if (isKlRahul) {
+        if (videoFile) {
+          // Video upload for KL Rahul
+          response = await sendVideoMessageRahul(videoFile, messageText || undefined);
+        } else {
+          // Text only for KL Rahul
+          response = await sendVoiceMessageRahul(messageText);
+        }
+      } else {
+        // Regular Suniel Shetty personas
+        response = await sendVoiceMessage(messageText);
+      }
+
+      const { audioBlob, references, summary } = response;
       
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -143,6 +218,12 @@ const ChatInterface = () => {
         references: references.length > 0 ? references : undefined,
       };
       setMessages((prev) => [...prev, aiMessage]);
+
+      // Auto-play for KL Rahul
+      if (isKlRahul) {
+        setPlayingMessageId(aiMessage.id);
+        autoPlayAudio(audioBlob);
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -180,6 +261,13 @@ const ChatInterface = () => {
     );
   };
 
+  const getDisplayImage = () => {
+    if (isKlRahul) {
+      return personaImage;
+    }
+    return personaImages[currentExpertise as Expertise] || personaImage;
+  };
+
   const renderAIMessage = (message: Message) => {
     const isPlaying = playingMessageId === message.id;
     const isSummaryExpanded = expandedSummaries.has(message.id);
@@ -188,8 +276,8 @@ const ChatInterface = () => {
       <div key={message.id} className="flex gap-3 items-start">
         <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-primary/50 flex-shrink-0">
           <img 
-            src={personaImages[currentExpertise]} 
-            alt="Suniel Shetty"
+            src={getDisplayImage()} 
+            alt={personaName}
             className="w-full h-full object-cover"
           />
         </div>
@@ -269,14 +357,14 @@ const ChatInterface = () => {
           
           <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/50 flex-shrink-0">
             <img 
-              src={personaImages[currentExpertise]} 
-              alt="Suniel Shetty"
+              src={getDisplayImage()} 
+              alt={personaName}
               className="w-full h-full object-cover"
             />
           </div>
           
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-semibold text-foreground">Suniel Shetty</h1>
+            <h1 className="text-lg font-semibold text-foreground">{personaName.split(' – ')[0]}</h1>
             {playingMessageId && (
               <div className="flex items-center gap-1.5 text-primary text-xs">
                 <Play className="w-3 h-3 animate-pulse" />
@@ -318,7 +406,7 @@ const ChatInterface = () => {
           {messages.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">
-                Start a conversation with Suniel Shetty
+                Start a conversation with {personaName.split(' – ')[0]}
               </p>
             </div>
           )}
@@ -339,8 +427,8 @@ const ChatInterface = () => {
             <div className="flex gap-3 items-start">
               <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-primary/50 flex-shrink-0">
                 <img 
-                  src={personaImages[currentExpertise]} 
-                  alt="Suniel Shetty"
+                  src={getDisplayImage()} 
+                  alt={personaName}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -356,22 +444,64 @@ const ChatInterface = () => {
 
       {/* Input */}
       <div className="border-t border-border px-4 py-4">
-        <div className="max-w-3xl mx-auto flex gap-3">
-          <Input
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your message..."
-            disabled={isLoading}
-            className="flex-1 bg-secondary border-border focus-visible:ring-primary"
-          />
-          <Button
-            onClick={handleSendMessage}
-            disabled={!inputValue.trim() || isLoading}
-            className="gold-gradient text-primary-foreground hover:opacity-90"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
+        <div className="max-w-3xl mx-auto">
+          {/* Video preview - only for KL Rahul */}
+          {selectedVideo && (
+            <div className="mb-3 flex items-center gap-2 bg-secondary rounded-lg px-3 py-2">
+              <span className="text-sm text-muted-foreground flex-1 truncate">
+                📹 {selectedVideo.name}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRemoveVideo}
+                className="h-6 w-6 p-0"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+          
+          <div className="flex gap-3">
+            {/* Video upload button - only for KL Rahul */}
+            {isKlRahul && (
+              <>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleVideoSelect}
+                  accept="video/mp4,video/quicktime,video/x-msvideo,video/webm"
+                  className="hidden"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading}
+                  className="flex-shrink-0"
+                  title="Upload video"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </Button>
+              </>
+            )}
+            
+            <Input
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={isKlRahul && selectedVideo ? "Add a message (optional)..." : "Type your message..."}
+              disabled={isLoading}
+              className="flex-1 bg-secondary border-border focus-visible:ring-primary"
+            />
+            <Button
+              onClick={handleSendMessage}
+              disabled={((!inputValue.trim() && !selectedVideo) || isLoading)}
+              className="gold-gradient text-primary-foreground hover:opacity-90"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>

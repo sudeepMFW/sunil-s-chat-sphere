@@ -2,6 +2,7 @@ const BASE_URL = "https://enterprise-mediafirewall-ai.millionvisions.ai/";
 const PERSONA_ID = "sunil_shetty";
 
 export type Expertise = "actor" | "businessman" | "fitness" | "life_coach";
+export type PersonaType = Expertise | "kl_rahul";
 export type Humor = "calm" | "happy" | "strict" | "funny";
 export type ExpertLevel = "basic" | "normal" | "advanced" | "elite";
 export type Language = "English" | "Hindi";
@@ -92,8 +93,64 @@ export const sendVoiceMessage = async (text: string): Promise<VoiceResponse> => 
 
   // Get X-Summary header
   const summary = response.headers.get("X-Summary") || "";
-  console.log("Summaryy is")
-  console.log(summary)
+  console.log("Summary is", summary);
+  const audioBlob = await response.blob();
+  return { audioBlob, references, summary };
+};
+
+// KL Rahul specific voice API
+export const sendVoiceMessageRahul = async (text: string): Promise<VoiceResponse> => {
+  const response = await fetch(`${BASE_URL}/voice-rahul`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ text }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to get voice response from KL Rahul");
+  }
+
+  // Get X-References header
+  const referencesHeader = response.headers.get("X-References") || "";
+  const references = referencesHeader
+    ? referencesHeader.split(",").map((ref) => ref.trim()).filter(Boolean)
+    : [];
+
+  // Get X-Summary header
+  const summary = response.headers.get("X-Summary") || "";
+  console.log("Rahul Summary is", summary);
+  const audioBlob = await response.blob();
+  return { audioBlob, references, summary };
+};
+
+// KL Rahul video upload API
+export const sendVideoMessageRahul = async (video: File, text?: string): Promise<VoiceResponse> => {
+  const formData = new FormData();
+  formData.append("video", video);
+  if (text) {
+    formData.append("text", text);
+  }
+
+  const response = await fetch(`${BASE_URL}/voice-rahul-video`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to get video response from KL Rahul");
+  }
+
+  // Get X-References header
+  const referencesHeader = response.headers.get("X-References") || "";
+  const references = referencesHeader
+    ? referencesHeader.split(",").map((ref) => ref.trim()).filter(Boolean)
+    : [];
+
+  // Get X-Summary header
+  const summary = response.headers.get("X-Summary") || "";
+  console.log("Rahul Video Summary is", summary);
   const audioBlob = await response.blob();
   return { audioBlob, references, summary };
 };
