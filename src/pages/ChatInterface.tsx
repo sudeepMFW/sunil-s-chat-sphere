@@ -17,22 +17,28 @@ interface Message {
   audioUrl?: string;
   summary?: string;
   references?: string[];
+  uploadedVideoUrl?: string; // For KL Rahul video uploads
+  hasPlayed?: boolean; // Track if audio has been auto-played
 }
 
-const getYouTubeEmbedUrl = (url: string): string | null => {
+const getYouTubeVideoId = (url: string): string | null => {
   // Handle YouTube Shorts URLs
   const shortsMatch = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/);
   if (shortsMatch) {
-    return `https://www.youtube.com/embed/${shortsMatch[1]}`;
+    return shortsMatch[1];
   }
   
   // Handle regular YouTube URLs
   const regularMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
   if (regularMatch) {
-    return `https://www.youtube.com/embed/${regularMatch[1]}`;
+    return regularMatch[1];
   }
   
   return null;
+};
+
+const getYouTubeThumbnail = (videoId: string): string => {
+  return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 };
 
 const ChatInterface = () => {
@@ -53,10 +59,13 @@ const ChatInterface = () => {
   const [language, setLanguageState] = useState<Language>("English");
   const [expandedSummaries, setExpandedSummaries] = useState<Set<string>>(new Set());
   const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
+  const [playingVideoRef, setPlayingVideoRef] = useState<string | null>(null);
+  const [expandedReferences, setExpandedReferences] = useState<Set<string>>(new Set());
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadedVideoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -111,7 +120,7 @@ const ChatInterface = () => {
     audio.play();
   };
 
-  const autoPlayAudio = (audioBlob: Blob) => {
+  const autoPlayAudio = (audioBlob: Blob, messageId: string, uploadedVideoUrl?: string) => {
     // Stop current audio if playing
     if (audioRef.current) {
       audioRef.current.pause();
@@ -122,16 +131,54 @@ const ChatInterface = () => {
     const audio = new Audio(audioUrl);
     audioRef.current = audio;
 
+    audio.onplay = () => {
+      setPlayingMessageId(messageId);
+      // If there's an uploaded video, start playing it simultaneously
+      if (uploadedVideoUrl) {
+        setPlayingVideoRef(messageId);
+        setTimeout(() => {
+          if (uploadedVideoRef.current) {
+            uploadedVideoRef.current.play();
+          }
+        }, 100);
+      }
+    };
+
     audio.onended = () => {
       setPlayingMessageId(null);
+      setPlayingVideoRef(null);
       URL.revokeObjectURL(audioUrl);
+      // Mark message as played
+      setMessages(prev => prev.map(m => 
+        m.id === messageId ? { ...m, hasPlayed: true } : m
+      ));
+      // Pause uploaded video
+      if (uploadedVideoRef.current) {
+        uploadedVideoRef.current.pause();
+      }
     };
     audio.onerror = () => {
       setPlayingMessageId(null);
+      setPlayingVideoRef(null);
       URL.revokeObjectURL(audioUrl);
+      if (uploadedVideoRef.current) {
+        uploadedVideoRef.current.pause();
+      }
     };
 
     audio.play();
+  };
+
+  const toggleReferenceVideo = (refKey: string) => {
+    setExpandedReferences(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(refKey)) {
+        newSet.delete(refKey);
+      } else {
+        newSet.add(refKey);
+      }
+      return newSet;
+    });
   };
 
   const toggleSummary = (messageId: string) => {
@@ -193,10 +240,12 @@ const ChatInterface = () => {
 
     try {
       let response;
+      let uploadedVideoUrl: string | undefined;
       
       if (isKlRahul) {
         if (videoFile) {
-          // Video upload for KL Rahul
+          // Video upload for KL Rahul - create URL for playback
+          uploadedVideoUrl = URL.createObjectURL(videoFile);
           response = await sendVideoMessageRahul(videoFile, messageText || undefined);
         } else {
           // Text only for KL Rahul
@@ -216,14 +265,14 @@ const ChatInterface = () => {
         audioBlob,
         summary,
         references: references.length > 0 ? references : undefined,
+        uploadedVideoUrl,
+        hasPlayed: false,
       };
       setMessages((prev) => [...prev, aiMessage]);
 
-      // Auto-play for KL Rahul
-      if (isKlRahul) {
-        setPlayingMessageId(aiMessage.id);
-        autoPlayAudio(audioBlob);
-      }
+      // Auto-play audio for ALL voice responses
+      setPlayingMessageId(aiMessage.id);
+      autoPlayAudio(audioBlob, aiMessage.id, uploadedVideoUrl);
     } catch (error) {
       toast({
         title: "Error",
@@ -271,6 +320,7 @@ const ChatInterface = () => {
   const renderAIMessage = (message: Message) => {
     const isPlaying = playingMessageId === message.id;
     const isSummaryExpanded = expandedSummaries.has(message.id);
+    const isVideoPlaying = playingVideoRef === message.id;
 
     return (
       <div key={message.id} className="flex gap-3 items-start">
@@ -282,7 +332,26 @@ const ChatInterface = () => {
           />
         </div>
         <div className="flex-1 space-y-3">
-          {/* Main response bubble with Play button */}
+          {/* Uploaded video playback - for KL Rahul video uploads */}
+          {message.uploadedVideoUrl && (
+            <div className={`bg-card border rounded-xl overflow-hidden ${isVideoPlaying ? 'border-primary' : 'border-border'}`}>
+              <video
+                ref={isVideoPlaying ? uploadedVideoRef : undefined}
+                src={message.uploadedVideoUrl}
+                className="w-full max-h-[300px] object-contain bg-black"
+                controls={false}
+                muted={false}
+              />
+              {isVideoPlaying && (
+                <div className="px-3 py-2 bg-primary/10 text-primary text-xs flex items-center gap-2">
+                  <Play className="w-3 h-3 animate-pulse" />
+                  Coach is reviewing your video...
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Main response bubble with Play/Replay button */}
           <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3">
             <div className="flex items-center gap-3">
               <Button
@@ -292,7 +361,7 @@ const ChatInterface = () => {
                 className="gap-2"
               >
                 <Play className={`w-4 h-4 ${isPlaying ? 'animate-pulse' : ''}`} />
-                {isPlaying ? 'Playing...' : 'Play'}
+                {isPlaying ? 'Playing...' : message.hasPlayed ? 'Replay' : 'Play'}
               </Button>
               
               {message.summary && (
@@ -316,21 +385,57 @@ const ChatInterface = () => {
             )}
           </div>
 
-          {/* Embedded YouTube videos - only if references exist */}
+          {/* YouTube reference thumbnails - only if references exist */}
           {message.references && message.references.length > 0 && (
-            <div className="space-y-3">
+            <div className="flex flex-wrap gap-3">
               {message.references.map((ref, idx) => {
-                const embedUrl = getYouTubeEmbedUrl(ref);
-                if (!embedUrl) return null;
+                const videoId = getYouTubeVideoId(ref);
+                if (!videoId) return null;
+                const refKey = `${message.id}-${idx}`;
+                const isExpanded = expandedReferences.has(refKey);
+                
                 return (
-                  <div key={idx} className="bg-card border border-border rounded-xl overflow-hidden">
-                    <iframe
-                      src={embedUrl}
-                      title={`Reference video ${idx + 1}`}
-                      className="w-full aspect-[9/16] max-h-[400px]"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
+                  <div key={idx} className="flex flex-col gap-2">
+                    {/* Thumbnail with play overlay */}
+                    {!isExpanded && (
+                      <button
+                        onClick={() => toggleReferenceVideo(refKey)}
+                        className="relative group cursor-pointer rounded-xl overflow-hidden border border-border hover:border-primary transition-colors"
+                      >
+                        <img
+                          src={getYouTubeThumbnail(videoId)}
+                          alt={`Reference ${idx + 1}`}
+                          className="w-40 h-24 object-cover"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 group-hover:bg-black/50 transition-colors">
+                          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+                            <Play className="w-5 h-5 text-primary-foreground ml-0.5" />
+                          </div>
+                        </div>
+                        <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                          Reference {idx + 1}
+                        </div>
+                      </button>
+                    )}
+                    
+                    {/* Expanded iframe player */}
+                    {isExpanded && (
+                      <div className="bg-card border border-border rounded-xl overflow-hidden">
+                        <iframe
+                          src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+                          title={`Reference video ${idx + 1}`}
+                          className="w-full aspect-video max-w-md"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                        <button
+                          onClick={() => toggleReferenceVideo(refKey)}
+                          className="w-full px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          Close
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
