@@ -49,7 +49,7 @@ const personas: Persona[] = [
     subtitle: "Elite cricket fitness & batting guidance",
     icon: "kl_rahul" as const,
     personaType: "kl_rahul",
-    image: "https://img1.hscicdn.com/image/upload/f_auto,t_ds_w_1200,q_50/lsci/db/PICTURES/CMS/322000/322075.jpg",
+    image: "https://sugermint.com/wp-content/uploads/2024/05/KL-Rahul.jpg",
     isKlRahul: true,
   },
 ];
