@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Volume2, ExternalLink, LogOut } from "lucide-react";
+import { ArrowLeft, Send, LogOut, Play, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChatMessage } from "@/components/ChatMessage";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LoadingDots } from "@/components/LoadingDots";
-import { sendVoiceMessage, Expertise } from "@/lib/api";
+import { sendVoiceMessage, setLanguage, Expertise, Language } from "@/lib/api";
 import { personaImages } from "@/lib/personaImages";
 import { useToast } from "@/hooks/use-toast";
 
@@ -13,9 +13,27 @@ interface Message {
   id: string;
   content: string;
   isUser: boolean;
-  isReference?: boolean;
-  referenceUrl?: string;
+  audioBlob?: Blob;
+  audioUrl?: string;
+  summary?: string;
+  references?: string[];
 }
+
+const getYouTubeEmbedUrl = (url: string): string | null => {
+  // Handle YouTube Shorts URLs
+  const shortsMatch = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/);
+  if (shortsMatch) {
+    return `https://www.youtube.com/embed/${shortsMatch[1]}`;
+  }
+  
+  // Handle regular YouTube URLs
+  const regularMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+  if (regularMatch) {
+    return `https://www.youtube.com/embed/${regularMatch[1]}`;
+  }
+  
+  return null;
+};
 
 const ChatInterface = () => {
   const location = useLocation();
@@ -27,8 +45,10 @@ const ChatInterface = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const [currentExpertise] = useState<Expertise>(initialExpertise);
+  const [language, setLanguageState] = useState<Language>("English");
+  const [expandedSummaries, setExpandedSummaries] = useState<Set<string>>(new Set());
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -36,6 +56,67 @@ const ChatInterface = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const handleLanguageChange = async (newLanguage: Language) => {
+    try {
+      await setLanguage(newLanguage);
+      setLanguageState(newLanguage);
+      toast({
+        title: "Language Updated",
+        description: `Language set to ${newLanguage}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update language",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePlayAudio = (message: Message) => {
+    if (!message.audioBlob) return;
+
+    // Stop current audio if playing
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    // If clicking on currently playing message, just stop
+    if (playingMessageId === message.id) {
+      setPlayingMessageId(null);
+      return;
+    }
+
+    const audioUrl = URL.createObjectURL(message.audioBlob);
+    const audio = new Audio(audioUrl);
+    audioRef.current = audio;
+
+    audio.onplay = () => setPlayingMessageId(message.id);
+    audio.onended = () => {
+      setPlayingMessageId(null);
+      URL.revokeObjectURL(audioUrl);
+    };
+    audio.onerror = () => {
+      setPlayingMessageId(null);
+      URL.revokeObjectURL(audioUrl);
+    };
+
+    audio.play();
+  };
+
+  const toggleSummary = (messageId: string) => {
+    setExpandedSummaries(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId);
+      } else {
+        newSet.add(messageId);
+      }
+      return newSet;
+    });
+  };
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
@@ -51,47 +132,17 @@ const ChatInterface = () => {
     setIsLoading(true);
 
     try {
-      const { audioBlob, references } = await sendVoiceMessage(userMessage.content);
+      const { audioBlob, references, summary } = await sendVoiceMessage(userMessage.content);
       
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "🎙️ Voice response",
+        content: "Voice response ready",
         isUser: false,
+        audioBlob,
+        summary,
+        references: references.length > 0 ? references : undefined,
       };
       setMessages((prev) => [...prev, aiMessage]);
-
-      // Add reference messages if any
-      if (references.length > 0) {
-        const referenceMessages: Message[] = references.map((ref, index) => ({
-          id: (Date.now() + 2 + index).toString(),
-          content: ref,
-          isUser: false,
-          isReference: true,
-          referenceUrl: ref,
-        }));
-        setMessages((prev) => [...prev, ...referenceMessages]);
-      }
-
-      // Play audio
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-      
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-      
-      audio.onplay = () => setIsSpeaking(true);
-      audio.onended = () => {
-        setIsSpeaking(false);
-        URL.revokeObjectURL(audioUrl);
-      };
-      audio.onerror = () => {
-        setIsSpeaking(false);
-        URL.revokeObjectURL(audioUrl);
-      };
-      
-      await audio.play();
     } catch (error) {
       toast({
         title: "Error",
@@ -108,6 +159,93 @@ const ChatInterface = () => {
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  const renderSummaryBullets = (summary: string) => {
+    const bullets = summary.split(/[.!?]+/).filter(s => s.trim());
+    return (
+      <ul className="space-y-1 text-sm text-muted-foreground mt-2">
+        {bullets.map((bullet, idx) => (
+          <li key={idx} className="flex gap-2">
+            <span>•</span>
+            <span>{bullet.trim()}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+  const renderAIMessage = (message: Message) => {
+    const isPlaying = playingMessageId === message.id;
+    const isSummaryExpanded = expandedSummaries.has(message.id);
+
+    return (
+      <div key={message.id} className="flex gap-3 items-start">
+        <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-primary/50 flex-shrink-0">
+          <img 
+            src={personaImages[currentExpertise]} 
+            alt="Suniel Shetty"
+            className="w-full h-full object-cover"
+          />
+        </div>
+        <div className="flex-1 space-y-3">
+          {/* Main response bubble with Play button */}
+          <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3">
+            <div className="flex items-center gap-3">
+              <Button
+                size="sm"
+                variant={isPlaying ? "default" : "outline"}
+                onClick={() => handlePlayAudio(message)}
+                className="gap-2"
+              >
+                <Play className={`w-4 h-4 ${isPlaying ? 'animate-pulse' : ''}`} />
+                {isPlaying ? 'Playing...' : 'Play'}
+              </Button>
+              
+              {message.summary && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => toggleSummary(message.id)}
+                  className="gap-1 text-muted-foreground"
+                >
+                  Summary
+                  {isSummaryExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </Button>
+              )}
+            </div>
+
+            {/* Summary section - only visible when expanded */}
+            {message.summary && isSummaryExpanded && (
+              <div className="mt-3 pt-3 border-t border-border">
+                {renderSummaryBullets(message.summary)}
+              </div>
+            )}
+          </div>
+
+          {/* Embedded YouTube videos - only if references exist */}
+          {message.references && message.references.length > 0 && (
+            <div className="space-y-3">
+              {message.references.map((ref, idx) => {
+                const embedUrl = getYouTubeEmbedUrl(ref);
+                if (!embedUrl) return null;
+                return (
+                  <div key={idx} className="bg-card border border-border rounded-xl overflow-hidden">
+                    <iframe
+                      src={embedUrl}
+                      title={`Reference video ${idx + 1}`}
+                      className="w-full aspect-[9/16] max-h-[400px]"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -134,13 +272,24 @@ const ChatInterface = () => {
           
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-semibold text-foreground">Suniel Shetty</h1>
-            {isSpeaking && (
+            {playingMessageId && (
               <div className="flex items-center gap-1.5 text-primary text-xs">
-                <Volume2 className="w-3 h-3 animate-pulse" />
-                <span>Speaking...</span>
+                <Play className="w-3 h-3 animate-pulse" />
+                <span>Playing...</span>
               </div>
             )}
           </div>
+
+          {/* Language Selector */}
+          <Select value={language} onValueChange={(val) => handleLanguageChange(val as Language)}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="English">English</SelectItem>
+              <SelectItem value="Hindi">Hindi</SelectItem>
+            </SelectContent>
+          </Select>
 
           <Button
             variant="outline"
@@ -169,36 +318,15 @@ const ChatInterface = () => {
             </div>
           )}
           
-          {messages.map((message, index) => (
-            message.isReference ? (
-              <div key={message.id} className="flex gap-3 items-start">
-                <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-primary/50 flex-shrink-0">
-                  <img 
-                    src={personaImages[currentExpertise]} 
-                    alt="Suniel Shetty"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3">
-                  <a 
-                    href={message.referenceUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-primary hover:underline"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    <span className="break-all">{message.content}</span>
-                  </a>
+          {messages.map((message) => (
+            message.isUser ? (
+              <div key={message.id} className="flex gap-3 items-start justify-end">
+                <div className="bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-3 max-w-[80%]">
+                  {message.content}
                 </div>
               </div>
             ) : (
-              <ChatMessage
-                key={message.id}
-                content={message.content}
-                isUser={message.isUser}
-                isPlaying={!message.isUser && isSpeaking && index === messages.length - 1}
-                avatarImage={personaImages[currentExpertise]}
-              />
+              renderAIMessage(message)
             )
           ))}
           

@@ -1,9 +1,10 @@
-const BASE_URL = "https://enterprise-mediafirewall-ai.millionvisions.ai/";
+const BASE_URL = "http://40.90.232.96:8082";
 const PERSONA_ID = "sunil_shetty";
 
 export type Expertise = "actor" | "businessman" | "fitness" | "life_coach";
 export type Humor = "calm" | "happy" | "strict" | "funny";
 export type ExpertLevel = "basic" | "normal" | "advanced" | "elite";
+export type Language = "English" | "Hindi";
 
 export const setExpertise = async (expertise: Expertise[]): Promise<void> => {
   const response = await fetch(`${BASE_URL}/persona/${PERSONA_ID}/set-expertise`, {
@@ -47,9 +48,24 @@ export const setExpertLevel = async (expert_level: ExpertLevel): Promise<void> =
   }
 };
 
+export const setLanguage = async (language: Language): Promise<void> => {
+  const response = await fetch(`${BASE_URL}/persona/${PERSONA_ID}/set-language`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ language }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to set language");
+  }
+};
+
 export interface VoiceResponse {
   audioBlob: Blob;
   references: string[];
+  summary: string;
 }
 
 export const sendVoiceMessage = async (text: string): Promise<VoiceResponse> => {
@@ -74,7 +90,9 @@ export const sendVoiceMessage = async (text: string): Promise<VoiceResponse> => 
     ? referencesHeader.split(",").map((ref) => ref.trim()).filter(Boolean)
     : [];
 
+  // Get X-Summary header
+  const summary = response.headers.get("X-Summary") || "";
+
   const audioBlob = await response.blob();
-  console.log(references)
-  return { audioBlob, references };
+  return { audioBlob, references, summary };
 };
