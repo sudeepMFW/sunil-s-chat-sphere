@@ -162,13 +162,18 @@ const ChatInterface = () => {
   };
 
   const renderSummaryBullets = (summary: string) => {
-    const bullets = summary.split(/[.!?]+/).filter(s => s.trim());
+    // Split by sentences (. ! ?) but keep meaningful content
+    const bullets = summary
+      .split(/(?<=[.!?])\s+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+    
     return (
-      <ul className="space-y-1 text-sm text-muted-foreground mt-2">
+      <ul className="space-y-2 text-sm text-muted-foreground mt-2">
         {bullets.map((bullet, idx) => (
-          <li key={idx} className="flex gap-2">
-            <span>•</span>
-            <span>{bullet.trim()}</span>
+          <li key={idx} className="flex gap-2 items-start">
+            <span className="text-primary mt-0.5">•</span>
+            <span>{bullet}</span>
           </li>
         ))}
       </ul>
