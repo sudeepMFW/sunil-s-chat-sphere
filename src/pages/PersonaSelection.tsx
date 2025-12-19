@@ -45,7 +45,7 @@ const personas: Persona[] = [
     image: "https://c.ndtvimg.com/gws/ms/sunil-shetty-actor-producer-and-more/assets/2.jpeg?1723380029",
   },
   {
-    title: "KL Rahul – Cricket Fitness Coach",
+    title: "KL Rahul – Cricket Coach",
     subtitle: "Elite cricket fitness & batting guidance",
     icon: "kl_rahul" as const,
     personaType: "kl_rahul",
