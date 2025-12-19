@@ -1,10 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { Briefcase, Dumbbell, Heart, Clapperboard } from "lucide-react";
+import { Briefcase, Dumbbell, Heart, Clapperboard, Target } from "lucide-react";
 
 interface PersonaCardProps {
   title: string;
   subtitle: string;
-  icon: "actor" | "businessman" | "fitness" | "life_coach";
+  icon: "actor" | "businessman" | "fitness" | "life_coach" | "kl_rahul";
   image: string;
   onChat: () => void;
   isLoading?: boolean;
@@ -15,6 +15,7 @@ const iconMap = {
   businessman: Briefcase,
   fitness: Dumbbell,
   life_coach: Heart,
+  kl_rahul: Target,
 };
 
 export const PersonaCard = ({ title, subtitle, icon, image, onChat, isLoading }: PersonaCardProps) => {
