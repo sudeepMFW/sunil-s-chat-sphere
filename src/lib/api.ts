@@ -92,7 +92,7 @@ export const sendVoiceMessage = async (text: string): Promise<VoiceResponse> => 
 
   // Get X-Summary header
   const summary = response.headers.get("X-Summary") || "";
-
+  console.log(summary)
   const audioBlob = await response.blob();
   return { audioBlob, references, summary };
 };
